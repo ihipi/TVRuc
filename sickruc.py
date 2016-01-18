@@ -16,10 +16,12 @@ class Ventana(QMainWindow):
         #Iniciar el objeto QMainWindow
         QMainWindow.__init__(self)
         #Cargar la configuración del archivo .ui en el objeto
-        uic.loadUi("SickRuc.ui", self)
+        uic.loadUi("SickRuc3.ui", self)
         #self.setWindowTitle("Cambiando el título de la ventana")
+        self.tabs = []
+        self.index =0
         self.buto_busqueda.clicked.connect(self.buscaEvent)
-        
+
 #     def closeEvent(self, event):
 #         resultat = QMessageBox.question(self,"sortir...","Vols sortir de l'aplicacio?",QMessageBox.Yes | QMessageBox.No)
 #         if resultat == QMessageBox.Yes: event.accept()
