@@ -5,7 +5,6 @@ Created on 16 gen. 2016
 '''
 import sqlite3
 from infosearch import Info
-from tkinter.tix import ROW
 from math import floor
 
 
@@ -15,12 +14,12 @@ class SickRucDB():
     '''
 
 
-    def __init__(self):
+    def __init__(self, lloc=''):
         '''
         Constructor
         '''
         self.dbname = 'sicruc.db'
-        self.db = sqlite3.connect(self.dbname)
+        self.db = sqlite3.connect(lloc +self.dbname)
         self.c = self.db.cursor()
         self.c.execute('CREATE TABLE IF NOT EXISTS series (tvmazeID INTEGER PRIMARY KEY not NULL,thetvdb INTEGER, name TEXT, image TEXT)')
         self.c.execute('CREATE TABLE IF NOT EXISTS myseries (tvmazeID INTEGER PRIMARY KEY not NULL,thetvdb INTEGER, name TEXT, image TEXT)')
@@ -29,7 +28,7 @@ class SickRucDB():
     
     def dbstart(self):
         self.db = sqlite3.connect(self.dbname)
-    
+        self.c = self.db.cursor()
     def dbstop(self):
         self.db.close()
 
@@ -47,9 +46,13 @@ class SickRucDB():
         
         infoShow =  Info()
         self.c.execute("""select * from series where tvmazeID=?""",(tvmazeId,))
-        resposta = db.c.fetchone()
+        resposta = self.c.fetchone()
+        var = (resposta[0],resposta[1],resposta[2],resposta[3])
         try:
-            self.c.execute("""insert into myseries values (?,?,?,?)""",(resposta[0],resposta[1],resposta[2],resposta[3]))
+            self.c.execute("""insert into myseries values (?,?,?,?)""",var)
+        except sqlite3.IntegrityError:
+            print("couldn't add "+resposta[2]+" twice")
+            
         except:   
             print('La serie ja esta afegida o no existeix')
         r = infoShow.tvShowInfo(tvmazeId, True)
@@ -59,17 +62,14 @@ class SickRucDB():
             
             for l in r:
                 idCapitol = ''+ str(tvmazeId) + '-' + str(l['season']).zfill(2)+'-'+str(l['number']).zfill(2)
-                season = l['season']
-                capitol = l['number']
-                titol = l['name']
                 sinopsi = l['summary']
-                emisio = l['airdate']
-                print([idCapitol,season,capitol,titol,sinopsi,emisio])
                 print('-'*60)
-
-                ordre = """insert into capitols values ("{}",{},{},{},"{}","{}")""".format(idCapitol,tvmazeId,season,capitol,titol,emisio)
+                cap = (idCapitol,tvmazeId,l['season'],l['number'],l['name'],l['airdate'])
+                ordre = """insert into capitols values (?,?,?,?,?,?)"""
                 try:
-                    self.c.execute(ordre)
+                    self.c.execute(ordre,cap)
+                except sqlite3.IntegrityError:
+                    print("couldn't add "+resposta[2]+'-'+idCapitol[len(idCapitol)-5:]+" twice")
                 except :    
                     print("epic fail:   ",ordre)
                 self.db.commit()
@@ -128,12 +128,19 @@ class SickRucDB():
                         print(ordre)
                     self.db.commit()
     
-        
-db = SickRucDB()
+    def getSeriesList(self,table):
+        extra = 'order by rating asc'
+        ordre = "SELECT * FROM " + table
+        self.c.execute(ordre)
+        return [row[2] for row in self.c]
+
+            
+#db = SickRucDB()
+#db.getSeriesList('myseries')
 #db.updatedb()
 #db.c.execute('insert into series values (756,4455,"jhon nieve","imatge")')
 #db.db.commit()
-db.addSerie(32)
-db.c.execute("SELECT * FROM capitols")
-print(db.c.fetchone())
+#db.addSerie(81)
+#db.c.execute("SELECT * FROM capitols")
+#print(db.c.fetchone())
 
