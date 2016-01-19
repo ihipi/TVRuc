@@ -4,23 +4,30 @@ Created on 11 gen. 2016
 @author: albert
 '''
 import sys
-from PyQt5.QtWidgets import QApplication, QMainWindow, QMessageBox, QListWidgetItem
+from PyQt5.QtWidgets import QApplication, QMainWindow, QMessageBox, QListWidgetItem, QRadioButton
 from PyQt5 import uic
-from divixtotal import DivixTotal
+#from divixtotal import DivixTotal
+from db import SRDB
+from db.SRDB import SickRucDB
 
 
 #Clase heredada de QMainWindow (Constructor de ventanas)
 class Ventana(QMainWindow):
     #Método constructor de la clase
-    def __init__(self):
+    def __init__(self, bd='db/'):
         #Iniciar el objeto QMainWindow
         QMainWindow.__init__(self)
         #Cargar la configuración del archivo .ui en el objeto
         uic.loadUi("SickRuc3.ui", self)
         #self.setWindowTitle("Cambiando el título de la ventana")
+        self.db = SickRucDB(bd)
         self.tabs = []
         self.index =0
         self.buto_busqueda.clicked.connect(self.buscaEvent)
+        
+        self.radioLocal.clicked.connect(self.getItems)
+        self.radioGlobal.clicked.connect(self.getItems)
+        
 
 #     def closeEvent(self, event):
 #         resultat = QMessageBox.question(self,"sortir...","Vols sortir de l'aplicacio?",QMessageBox.Yes | QMessageBox.No)
@@ -38,12 +45,20 @@ class Ventana(QMainWindow):
             item = QListWidgetItem(k)
             self.list_resultat.addItem(item)
         
-    def getItems(self):
+    def getItems(self, ):
         '''
         Selecciona un item de la llista
         '''
-        
-        
+        self.listShows.clear()
+        table = None
+        if self.radioLocal.isChecked():
+            table = 'myseries'
+        if self.radioGlobal.isChecked():
+            table ='series'
+        for name in self.db.getSeriesList(table):
+            item = QListWidgetItem(name)
+            self.listShows.addItem(name)
+        print(self.db.getSeriesList(table))
         
 if __name__ == '__main__':
     #Instancia para iniciar una aplicación

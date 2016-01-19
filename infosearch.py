@@ -81,8 +81,8 @@ class Info():
         return r
             
         
-Buscador = Info()
-r = Buscador.tvBusca('thrones')
+# Buscador = Info()
+# r = Buscador.tvBusca('thrones')
 
 # 
 # for l in r:
