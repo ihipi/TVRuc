@@ -6,12 +6,12 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1127</width>
+    <width>988</width>
     <height>790</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>MainWindow</string>
+   <string>troçDeManta</string>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout_2">
@@ -66,7 +66,7 @@
            </widget>
           </item>
           <item row="0" column="1">
-           <widget class="QComboBox" name="comboBox"/>
+           <widget class="QComboBox" name="comboMotors"/>
           </item>
           <item row="1" column="1">
            <widget class="QGroupBox" name="groupBox_4">
@@ -107,7 +107,7 @@
          </layout>
         </item>
         <item row="1" column="1">
-         <widget class="QFrame" name="frame">
+         <widget class="QFrame" name="frameBaix">
           <property name="frameShape">
            <enum>QFrame::StyledPanel</enum>
           </property>
@@ -115,8 +115,11 @@
            <enum>QFrame::Raised</enum>
           </property>
           <layout class="QGridLayout" name="gridLayout_4">
+           <property name="sizeConstraint">
+            <enum>QLayout::SetNoConstraint</enum>
+           </property>
            <item row="0" column="0">
-            <widget class="QListWidget" name="list_resultat">
+            <widget class="QTreeWidget" name="treeResultat">
              <property name="minimumSize">
               <size>
                <width>200</width>
@@ -125,13 +128,23 @@
              </property>
              <property name="maximumSize">
               <size>
-               <width>400</width>
+               <width>16777215</width>
                <height>16777215</height>
               </size>
              </property>
+             <column>
+              <property name="text">
+               <string>NOM</string>
+              </property>
+             </column>
+             <column>
+              <property name="text">
+               <string>URL</string>
+              </property>
+             </column>
             </widget>
            </item>
-           <item row="0" column="2">
+           <item row="0" column="3">
             <widget class="QGroupBox" name="groupBox_2">
              <property name="title">
               <string>Informació</string>
@@ -142,10 +155,32 @@
              <property name="checkable">
               <bool>false</bool>
              </property>
-             <zorder>list_resultat</zorder>
+             <layout class="QGridLayout" name="gridLayout_15">
+              <item row="1" column="0">
+               <widget class="QLabel" name="label_4">
+                <property name="text">
+                 <string>TextLabel</string>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="0">
+               <widget class="QLabel" name="label_3">
+                <property name="text">
+                 <string>Torrent</string>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="1">
+               <widget class="QPushButton" name="btnDownload">
+                <property name="text">
+                 <string>Descarrega</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
             </widget>
            </item>
-           <item row="0" column="1">
+           <item row="0" column="2">
             <widget class="Line" name="line">
              <property name="cursor">
               <cursorShape>SplitHCursor</cursorShape>
@@ -175,7 +210,7 @@
           </property>
           <layout class="QGridLayout" name="gridLayout_7">
            <item row="0" column="0">
-            <widget class="QLineEdit" name="lineBusca"/>
+            <widget class="QLineEdit" name="lineFiltra"/>
            </item>
            <item row="1" column="0">
             <widget class="QGroupBox" name="groupBox">
@@ -186,14 +221,20 @@
               <item row="0" column="0">
                <widget class="QRadioButton" name="radioLocal">
                 <property name="text">
-                 <string>Local</string>
+                 <string>Les meves series</string>
+                </property>
+                <property name="checkable">
+                 <bool>true</bool>
+                </property>
+                <property name="checked">
+                 <bool>false</bool>
                 </property>
                </widget>
               </item>
-              <item row="0" column="1">
+              <item row="0" column="3">
                <widget class="QRadioButton" name="radioGlobal">
                 <property name="text">
-                 <string>Global</string>
+                 <string>Online</string>
                 </property>
                </widget>
               </item>
@@ -212,28 +253,7 @@
            <enum>QFrame::Raised</enum>
           </property>
           <layout class="QGridLayout" name="gridLayout_6">
-           <item row="0" column="0">
-            <widget class="QTreeWidget" name="treeWidget_3">
-             <property name="minimumSize">
-              <size>
-               <width>200</width>
-               <height>0</height>
-              </size>
-             </property>
-             <property name="maximumSize">
-              <size>
-               <width>400</width>
-               <height>16777215</height>
-              </size>
-             </property>
-             <column>
-              <property name="text">
-               <string notr="true">1</string>
-              </property>
-             </column>
-            </widget>
-           </item>
-           <item row="0" column="1">
+           <item row="1" column="3">
             <widget class="QGroupBox" name="groupBox_3">
              <property name="title">
               <string>Informació</string>
@@ -255,7 +275,26 @@
                 </property>
                 <layout class="QGridLayout" name="gridLayout_12">
                  <item row="0" column="0">
-                  <widget class="QTableView" name="tableView"/>
+                  <widget class="QTreeWidget" name="treeEpisodis">
+                   <property name="wordWrap">
+                    <bool>true</bool>
+                   </property>
+                   <column>
+                    <property name="text">
+                     <string>Season</string>
+                    </property>
+                   </column>
+                   <column>
+                    <property name="text">
+                     <string>Episode</string>
+                    </property>
+                   </column>
+                   <column>
+                    <property name="text">
+                     <string>Name</string>
+                    </property>
+                   </column>
+                  </widget>
                  </item>
                 </layout>
                </widget>
@@ -278,22 +317,64 @@
                     <enum>QFrame::Raised</enum>
                    </property>
                    <layout class="QGridLayout" name="gridLayout_13">
-                    <item row="1" column="0">
-                     <widget class="QLabel" name="label_5">
+                    <item row="0" column="0">
+                     <widget class="QLabel" name="labelTitol">
+                      <property name="maximumSize">
+                       <size>
+                        <width>16777215</width>
+                        <height>20</height>
+                       </size>
+                      </property>
+                      <property name="font">
+                       <font>
+                        <pointsize>20</pointsize>
+                       </font>
+                      </property>
                       <property name="text">
-                       <string>Sinopsis</string>
+                       <string>Titol...</string>
                       </property>
                      </widget>
                     </item>
-                    <item row="0" column="0">
-                     <widget class="QLabel" name="labelTitol">
+                    <item row="1" column="0">
+                     <widget class="QLabel" name="labelEpisodi">
+                      <property name="maximumSize">
+                       <size>
+                        <width>16777215</width>
+                        <height>25</height>
+                       </size>
+                      </property>
+                      <property name="font">
+                       <font>
+                        <pointsize>15</pointsize>
+                       </font>
+                      </property>
                       <property name="text">
-                       <string>TextLabel</string>
+                       <string/>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="3" column="0">
+                     <widget class="QLabel" name="labelRating">
+                      <property name="text">
+                       <string/>
                       </property>
                      </widget>
                     </item>
                     <item row="2" column="0">
-                     <widget class="QTextBrowser" name="textBrowser"/>
+                     <widget class="QTextBrowser" name="labelSinopsi">
+                      <property name="minimumSize">
+                       <size>
+                        <width>200</width>
+                        <height>0</height>
+                       </size>
+                      </property>
+                      <property name="maximumSize">
+                       <size>
+                        <width>300</width>
+                        <height>16777215</height>
+                       </size>
+                      </property>
+                     </widget>
                     </item>
                    </layout>
                   </widget>
@@ -308,7 +389,23 @@
                    </property>
                    <layout class="QGridLayout" name="gridLayout_14">
                     <item row="0" column="0">
-                     <widget class="QGraphicsView" name="graphicsView"/>
+                     <widget class="QLabel" name="labelImatge">
+                      <property name="minimumSize">
+                       <size>
+                        <width>200</width>
+                        <height>300</height>
+                       </size>
+                      </property>
+                      <property name="maximumSize">
+                       <size>
+                        <width>300</width>
+                        <height>400</height>
+                       </size>
+                      </property>
+                      <property name="text">
+                       <string/>
+                      </property>
+                     </widget>
                     </item>
                    </layout>
                   </widget>
@@ -317,6 +414,48 @@
                </widget>
               </item>
              </layout>
+            </widget>
+           </item>
+           <item row="1" column="1">
+            <widget class="QTreeWidget" name="listShows">
+             <property name="minimumSize">
+              <size>
+               <width>300</width>
+               <height>0</height>
+              </size>
+             </property>
+             <property name="sortingEnabled">
+              <bool>true</bool>
+             </property>
+             <column>
+              <property name="text">
+               <string>TvMaze Id</string>
+              </property>
+             </column>
+             <column>
+              <property name="text">
+               <string>Title</string>
+              </property>
+             </column>
+             <column>
+              <property name="text">
+               <string>Rating</string>
+              </property>
+             </column>
+            </widget>
+           </item>
+           <item row="0" column="3">
+            <widget class="QPushButton" name="btnDeleteShow">
+             <property name="text">
+              <string>Borrar</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="1">
+            <widget class="QPushButton" name="btnAddShow">
+             <property name="text">
+              <string>Afegir</string>
+             </property>
             </widget>
            </item>
           </layout>
@@ -333,7 +472,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1127</width>
+     <width>988</width>
      <height>25</height>
     </rect>
    </property>
@@ -341,5 +480,70 @@
   <widget class="QStatusBar" name="statusbar"/>
  </widget>
  <resources/>
- <connections/>
+ <connections>
+  <connection>
+   <sender>radioGlobal</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>btnAddShow</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>929</x>
+     <y>154</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>607</x>
+     <y>155</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>radioGlobal</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>btnDeleteShow</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>970</x>
+     <y>154</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>728</x>
+     <y>155</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>radioLocal</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>btnDeleteShow</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>245</x>
+     <y>154</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>728</x>
+     <y>155</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>radioLocal</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>btnAddShow</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>245</x>
+     <y>154</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>487</x>
+     <y>155</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
 </ui>
