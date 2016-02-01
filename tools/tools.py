@@ -6,7 +6,7 @@ Created on 24 gen. 2016
 import requests, json, os
 from bs4 import BeautifulSoup
 
-confFile =os.path.abspath('../SickRuc/db/conf')
+confFile =os.path.abspath('../db/conf')
 
 
 def getBS(url):
@@ -19,13 +19,14 @@ def getconfig():
     
 def setconfig(**kargs):
     conf = getconfig()
-    
+    print(kargs)
     for k in kargs.keys():
         if k in conf.keys():
         
             conf[k] = kargs[k]
         else:
-            print("no existaix '"+k+"' a la configuració")
+            conf[k] ={ kargs[k]}
+            print("La clau '{}' s'ha afegit a la configuració amb valor '{}'".format(k,kargs[k]))
             
         
     f = open(confFile, mode='w')

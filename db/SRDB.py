@@ -3,11 +3,16 @@ Created on 16 gen. 2016
 
 @author: albert
 '''
-import sqlite3, time, urllib,json,os
-from infosearch import Info
+import sqlite3,datetime, time, urllib,json,os, threading, queue
+from buscadors.infosearch import Info
 from math import floor
 from datetime import datetime
 from tools import tools
+from buscadors.tviso import TViso
+from tools.constants import TVISOURL, IMG
+from pprint import pprint
+ 
+
 
 
 class SickRucDB():
@@ -25,9 +30,9 @@ class SickRucDB():
         self.db = sqlite3.connect(lloc +self.dbname)
         self.c = self.db.cursor()
         
-        self.c.execute('CREATE TABLE IF NOT EXISTS series (tvmazeID INTEGER PRIMARY KEY not NULL,thetvdb INTEGER, name TEXT, image TEXT, rating TEXT, sinopsis TEXT)')
-        self.c.execute('CREATE TABLE IF NOT EXISTS myseries (tvmazeID INTEGER PRIMARY KEY not NULL,thetvdb INTEGER, name TEXT, image TEXT, rating TEXT, sinopsis TEXT)')
-        self.c.execute('create table if not exists capitols (id TEXT PRIMARY KEY not NULL, tvmazeID INTEGER, season INTEGER, capitol INTEGER, titol TEXT,emisio text, sinopsis TEXT,estat INTEGER )')
+        self.c.execute('CREATE TABLE IF NOT EXISTS series (imdb INTEGER PRIMARY KEY not NULL,tvmazeID INTEGER, name TEXT, image TEXT, rating TEXT, sinopsis TEXT)')
+        self.c.execute('CREATE TABLE IF NOT EXISTS mycollection (imdb INTEGER PRIMARY KEY not NULL,tviso_id INTEGER, media INTEGER, name TEXT, estat TEXT, imatge TEXT )')
+        self.c.execute('create table if not exists capitols (idm INTEGER PRIMARY KEY not NULL, tviso_id INTEGER, season INTEGER, capitol INTEGER, titol TEXT, sinopsis TEXT,estat INTEGER , date TEXT)')
         self.lastId = self.getLastID()
         self.format = '%Y-%M-%d'
         ###
@@ -38,9 +43,9 @@ class SickRucDB():
         print(self.lastUpdate)
         if deltaTime.days>=tools.getconfig()['actualitzacio_freq']:
             print(deltaTime.days)            
-            self.updatedb()
+            self.updateUserMedia()
         else:
-            print('-'*50,'\nBase de dades actualitzada\n','-'*50)
+            print('-'*50,'\nBase de dades actualitzada a dia: {}\n'.format(self.lastUpdate),'-'*50)
     def gettime(self):
         print(tools.getconfig()['lastUpdate'])
         return tools.getconfig()['lastUpdate']    
@@ -59,6 +64,8 @@ class SickRucDB():
     def dbstop(self):
         self.db.close()
 
+        
+        
     def getLastID(self):
         
         self.c.execute('select * from series')
@@ -68,54 +75,112 @@ class SickRucDB():
                 lastId = row[0]
         print('Last TVMaze id: ',lastId)
         return lastId
-    
-    def addSerie(self, tvmazeId):
+    def wgetImage(self, serie,tipus):    
+        '''
+        aconsegueix les imatges del "media seleccionat
+        @params media_json: json de TVISO amb la informacio del media 
+        '''
+        tviso =  TViso()
+        print(serie, tipus)
+        res = tviso.getFullInfo( serie, tipus).json()
+
+        if isinstance(res['images'], dict):
+            posterFile = self.root+'imatges/'+res['imdb']+"_poster.jpg"
+            backdropFile = self.root+'imatges/'+res['imdb']+"_back.jpg"
+            posterurl = 'https://img.tviso.com'+'/{}{}{}'.format(res['images']['country'], IMG['fonsL'],res['images']['poster'])
+            backurl = 'https://img.tviso.com'+'/{}{}{}'.format(res['images']['country'], IMG['posterL'],res['images']['backdrop'])
+            print(posterurl, posterFile )
+            print(backurl, backdropFile )
+            #descarreguem la imatge amb un WGET de consola normal i corrent
+            os.system("wget -O {0} {1}".format(posterFile, posterurl))
+            os.system("wget -O {0} {1}".format(backdropFile, backurl))
+            
+            return True
+        else:
+            print('sense imatge')        
+            return False
         
-        infoShow =  Info()
-        self.c.execute("""select * from series where tvmazeID=?""",(tvmazeId,))
-        res = self.c.fetchone()
-#        var = (res[0],res[1],res[2],res[3], res[4],res[5])
-        var = [r for r in res]
+    def addSerie(self, idm, media_type):
+        
+        tviso =  TViso()
+        res = tviso.getFullInfo( idm, media_type).json()
         try:
             #provem de guardar la foto
-            if res[3 ]!= 'None':
-                imatgeFile = self.root+'imatges/'+str(res[0])+'_'+res[2]+".jpg"
-                urllib.request.urlretrieve(res[3], imatgeFile )
-                var[-3]= imatgeFile
-            else:
-                print('sense imatge')
-            self.c.execute("""insert into myseries values (?,?,?,?,?,?)""",var)
+            
+#             if isinstance(res['images'], dict):
+#                 posterFile = self.root+'imatges/'+res['imdb']+"_poster.jpg"
+#                 backdropFile = self.root+'imatges/'+res['imdb']+"_back.jpg"
+#                 posterurl = 'https://img.tviso.com'+'/{}{}{}'.format(res['images']['country'], IMG['fonsL'],res['images']['poster'])
+#                 backurl = 'https://img.tviso.com'+'/{}{}{}'.format(res['images']['country'], IMG['posterL'],res['images']['backdrop'])
+#                 print(posterurl, posterFile )
+#                 print(backurl, backdropFile )
+#                 #descarreguem la imatge amb un WGET de consola normal i corrent
+#                 os.system("wget -O {0} {1}".format(posterFile, posterurl))
+#                 os.system("wget -O {0} {1}".format(backdropFile, backurl))
+#                 
+#             else:
+#                 print('sense imatge')
+            imageFile = self.root+'imatges/'+res['imdb']+"_poster.jpg"
+            values = (int(res['imdb'][2:]),int(res['idm']), int(res['mediaType']), str(res['name']), str(res['status']), imageFile)
+            self.c.execute("""insert into mycollection values (?,?,?,?,?,?)""",values)
 
 
         except sqlite3.IntegrityError:
-            print("couldn't add "+res[2]+" twice")
+            print("couldn't add serie  twice")
             
-        except:   
+        except Exception as e:   
             
-            print('error  o no existeix...\n',var)
-            print([type(v) for v in var])
+            print('error:\t'+str(e)+'...  \no no existeix...\n')
+
             
         #afegim els episodis a la taula capitols
             
-        r = infoShow.tvShowInfo(tvmazeId, True)
-        if r == []:
-            print("El codi 'tvmazeId' no existeix")
-        else:
-            
-            for l in r:
-                idCapitol = ''+ str(tvmazeId) + '-' + str(l['season']).zfill(2)+'-'+str(l['number']).zfill(2)
+        
+        if res['mediaType'] == 1:
+            for season in res['seasons'].keys():
+                for e in res['seasons'][str(season)]:
+                    estat =1
+                    values = (int(e['idm']),int(e['media']['idm']), int(e['season']), int(e['num']),str(e['name']),str(e['plot']),estat, '')
                 
-                print('-'*60)
-                cap = (idCapitol,tvmazeId,l['season'],l['number'],l['name'],l['airdate'],l['summary'],0)
-                ordre = """insert into capitols values (?,?,?,?,?,?,?,?)"""
-                try:
-                    self.c.execute(ordre,cap)
-                except sqlite3.IntegrityError:
-                    print("couldn't add "+res[2]+'-'+idCapitol[len(idCapitol)-5:]+" twice")
-                except :    
-                    print("epic fail:   ",ordre)
-                self.db.commit()
+                    print('-'*60)
+                    ordre = """insert into capitols values (?,?,?,?,?,?,?,?)"""
+                    try:
+                        self.c.execute(ordre,values)
+                    except sqlite3.IntegrityError:
+                        print("couldn't add episode twice")
+                    except Exception as e :    
+                        print("epic fail: {}  ".format(e),ordre)
+                    self.db.commit()
+    def updateUserMedia(self):
+        tviso = TViso()
+        res = tviso.getUserSumary().json()
+        pprint(res)
+        threads = list()
+        que = queue.Queue(4)
+        for media in res['collection']['medias'].keys():
+            print(media)
+#            self.addSerie(media.split('-')[1],media.split('-')[0])
+#######prova amb threads
 
+            show =threading.Thread(target=self.addSerie, name= media, args=(media.split('-')[1],media.split('-')[0]))  
+#            args =(media.split('-')[1],media.split('-')[0])
+            imatge =threading.Thread(target=self.wgetImage, name=media.split('-')[1], args=(media.split('-')[1],media.split('-')[0]))
+            threads.append(show)
+            threads.append(imatge)
+            
+            show.start()
+            imatge.start()
+           
+#            self.wgetImage(media.split('-')[1],media.split('-')[0])
+        for episodi in res['collection']['episodes'].keys():
+            data = datetime.fromtimestamp(res['collection']['episodes'][episodi]).strftime('%Y-%m-%d')
+            print(data, episodi)
+            self.c.execute("""UPDATE capitols SET date=? WHERE idm=?""", (str(data), int(episodi)))
+            self.db.commit()
+        self.settime()    
+
+        
+    
     def deleteSerie(self,tvmazeID):
         self.c.execute('SELECT image FROM myseries WHERE tvmazeID=?',(tvmazeID,))
         os.remove(self.c.fetchone()[0])
@@ -156,7 +221,7 @@ class SickRucDB():
                     except:
                         sino =''
                         
-                    thetvdb = show['externals']['thetvdb']
+                    imdb = show['externals']['imdb']
                     if thetvdb == None:
                         thetvdb =0
                     rating = show['rating']['average']
@@ -171,7 +236,7 @@ class SickRucDB():
 #                     print('imatge','\t',imatge)
 #                     print('thetvdb','\t',thetvdb)
 #                     print('Rate', '\t',rating)
-                    row =( int(idtvmaze), str(thetvdb), str(nom), str(imatge),str(rating),sino)
+                    row =( int(imdb[2:]), str(idtvmaze), str(nom), str(imatge),str(rating),sino)
                     ordre = """insert into series values (?,?,?,?,?,?)"""
                     
                     print(ordre)
@@ -211,14 +276,15 @@ class SickRucDB():
         return  [column for column in self.c]
 
 
-#db =SickRucDB()
+db =SickRucDB()
 #db.settime()
 # print(db.getShowId(67))
 #db.getSeriesList('myseries')
 #db.updatedb()
 #db.c.execute('insert into series values (756,4455,"jhon nieve","imatge")')
 #db.db.commit()
-# db.addSerie(86)
+#db.addSerie(613,1)
+db.updateUserMedia()
 #db.addSerie(23)
 #db.addSerie(643)
 
