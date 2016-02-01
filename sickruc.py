@@ -3,12 +3,13 @@ Created on 11 gen. 2016
 
 @author: albert
 '''
-import sys, urllib, requests, infosearch
+import sys, urllib, requests
+from buscadors import infosearch
 from PyQt5.QtWidgets import QApplication, QMainWindow, QMessageBox, QSizeGrip, QHeaderView, QListWidgetItem, QRadioButton, QTreeWidgetItem , QTableWidgetItem
 from PyQt5 import uic
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtCore import Qt
-from divixtotal import DivixTotal
+from buscadors.divixtotal import DivixTotal
 from db import SRDB
 from db.SRDB import SickRucDB
 from _io import StringIO

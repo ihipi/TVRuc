@@ -3,7 +3,8 @@ Created on 24 gen. 2016
 
 @author: albert
 '''
-import elitetorrent, divixtotal
+from buscadors import divixtotal
+from buscadors import elitetorrent
 
 
 
