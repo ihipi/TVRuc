@@ -3,7 +3,7 @@ Created on 16 gen. 2016
 
 @author: albert
 '''
-import sqlite3,datetime, time, urllib,json,os, threading, queue
+import sqlite3,datetime, time, urllib,json,os, threading, queue, multiprocessing
 from buscadors.infosearch import Info
 from math import floor
 from datetime import datetime
@@ -11,8 +11,6 @@ from tools import tools
 from buscadors.tviso import TViso
 from tools.constants import TVISOURL, IMG
 from pprint import pprint
- 
-
 
 
 class SickRucDB():
@@ -36,6 +34,18 @@ class SickRucDB():
         self.lastId = self.getLastID()
         self.format = '%Y-%M-%d'
         ###
+        ###Implementing multiples threads
+        ###
+        self.cpu_cores = multiprocessing.cpu_count()
+        self.get_image_queue = queue.Queue()
+        for i in range(self.cpu_cores):
+            worker = threading.Thread(target=self.wgetImage, args=(i, self.get_image_queue,))
+            worker.setDaemon(True)
+            worker.start()
+
+
+
+        ###
         ### COMPROVAR ULTIMA ACTUALITZACIó 
         ###
         self.lastUpdate = self.gettime()
@@ -46,10 +56,9 @@ class SickRucDB():
             self.updateUserMedia()
         else:
             print('-'*50,'\nBase de dades actualitzada a dia: {}\n'.format(self.lastUpdate),'-'*50)
-    def gettime(self):
-        print(tools.getconfig()['lastUpdate'])
-        return tools.getconfig()['lastUpdate']    
-    
+
+
+
     def settime(self):
 #         f = open(self.root+'conf', mode='w')
         last = {'lastUpdate':time.strftime(self.format)}
@@ -61,13 +70,11 @@ class SickRucDB():
     def dbstart(self):
         self.db = sqlite3.connect(self.dbname)
         self.c = self.db.cursor()
+
     def dbstop(self):
         self.db.close()
-
-        
-        
     def getLastID(self):
-        
+
         self.c.execute('select * from series')
         lastId = 0
         for row in self.c:
@@ -75,31 +82,51 @@ class SickRucDB():
                 lastId = row[0]
         print('Last TVMaze id: ',lastId)
         return lastId
-    def wgetImage(self, serie,tipus):    
+
+        
+        
+    def gettime(self):
+
+        print(tools.getconfig()['lastUpdate'])
+        return tools.getconfig()['lastUpdate']
+    def wgetImage(self, *args):
         '''
         aconsegueix les imatges del "media seleccionat
-        @params media_json: json de TVISO amb la informacio del media 
+        @params media_json: json de TVISO amb la informacio del media
         '''
-        tviso =  TViso()
-        print(serie, tipus)
-        res = tviso.getFullInfo( serie, tipus).json()
+        print(args)
 
-        if isinstance(res['images'], dict):
-            posterFile = self.root+'imatges/'+res['imdb']+"_poster.jpg"
-            backdropFile = self.root+'imatges/'+res['imdb']+"_back.jpg"
-            posterurl = 'https://img.tviso.com'+'/{}{}{}'.format(res['images']['country'], IMG['fonsL'],res['images']['poster'])
-            backurl = 'https://img.tviso.com'+'/{}{}{}'.format(res['images']['country'], IMG['posterL'],res['images']['backdrop'])
-            print(posterurl, posterFile )
-            print(backurl, backdropFile )
-            #descarreguem la imatge amb un WGET de consola normal i corrent
-            os.system("wget -O {0} {1}".format(posterFile, posterurl))
-            os.system("wget -O {0} {1}".format(backdropFile, backurl))
-            
-            return True
-        else:
-            print('sense imatge')        
-            return False
-        
+        while True:
+            if isinstance(args[1],queue.Queue):
+                fil, cua = args
+
+                serie, tipus = cua.get()
+            else:
+                fil, cua= None
+                serie, tipus = args
+
+            tviso =  TViso()
+            print('##'*60,'\nFil numero : {}, codi: {} tipus{}\n'.format(fil,serie, tipus),'##'*60)
+            res = tviso.getFullInfo( serie, tipus).json()
+
+            if isinstance(res['images'], dict):
+                posterFile = self.root+'imatges/'+res['imdb']+"_poster.jpg"
+                backdropFile = self.root+'imatges/'+res['imdb']+"_back.jpg"
+                posterurl = 'https://img.tviso.com'+'/{}{}{}'.format(res['images']['country'], IMG['fonsL'],res['images']['poster'])
+                backurl = 'https://img.tviso.com'+'/{}{}{}'.format(res['images']['country'], IMG['posterL'],res['images']['backdrop'])
+                print(posterurl, posterFile )
+                print(backurl, backdropFile )
+                #descarreguem la imatge amb un WGET de consola normal i corrent
+                print('descarregant imatges pe la serie {}'.format(serie))
+                os.system("wget -O {0} {1}".format(posterFile, posterurl))
+                os.system("wget -O {0} {1}".format(backdropFile, backurl))
+                cua.task_done()
+
+            else:
+                cua.task_done()
+                print('sense imatge')
+                return False
+
     def addSerie(self, idm, media_type):
         
         tviso =  TViso()
@@ -154,30 +181,21 @@ class SickRucDB():
     def updateUserMedia(self):
         tviso = TViso()
         res = tviso.getUserSumary().json()
-        pprint(res)
-        threads = list()
-        que = queue.Queue(4)
-        for media in res['collection']['medias'].keys():
-            print(media)
-#            self.addSerie(media.split('-')[1],media.split('-')[0])
-#######prova amb threads
 
-            show =threading.Thread(target=self.addSerie, name= media, args=(media.split('-')[1],media.split('-')[0]))  
-#            args =(media.split('-')[1],media.split('-')[0])
-            imatge =threading.Thread(target=self.wgetImage, name=media.split('-')[1], args=(media.split('-')[1],media.split('-')[0]))
-            threads.append(show)
-            threads.append(imatge)
-            
-            show.start()
-            imatge.start()
-           
+        threads = list()
+
+        for media in res['collection']['medias'].keys():
+            print('Queuing:',media.split('-')[1],media.split('-')[0])
+            self.get_image_queue.put((media.split('-')[1],media.split('-')[0]))
+
+        self.get_image_queue.join()
 #            self.wgetImage(media.split('-')[1],media.split('-')[0])
         for episodi in res['collection']['episodes'].keys():
             data = datetime.fromtimestamp(res['collection']['episodes'][episodi]).strftime('%Y-%m-%d')
             print(data, episodi)
             self.c.execute("""UPDATE capitols SET date=? WHERE idm=?""", (str(data), int(episodi)))
             self.db.commit()
-        self.settime()    
+        self.settime()
 
         
     

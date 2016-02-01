@@ -9,7 +9,7 @@ import requests, time
 import PyQt5, requests
 #Per llegir parameetres de una url
 from urllib.parse import urlparse, parse_qs
-from tools.constants import *
+from tools.constants import API_ID, SECRET, TVISOURL
 from pprint import pprint
 from tools import tools
 
@@ -33,8 +33,10 @@ class TViso(object):
         self.auth_token = tools.getconfig()['auth_token']
         self.auth_expires = tools.getconfig()['auth_expires_date']
         self.user_token = tools.getconfig()['user_token']
-        
-        if self.actualTime > self.auth_expires:
+
+        print(self.actualTime , self.auth_expires)
+
+        if self.actualTime > self.auth_expires :
             self.getAuthToken()
             self.getUserToken()
         
@@ -105,9 +107,9 @@ class TViso(object):
         gets={'auth_token':self.auth_token,'user_token':self.user_token}
         return requests.get(TVISOURL+'/user/media/collection_summary?', params = gets)    
         
-#Tv = TViso()  
+# Tv = TViso()
 #pprint(Tv.searchTitle('fargo').json())      
 #pprint(Tv.getUserCollection().json(),depth = 5)
 #pprint(Tv.getUserMedia().json(),depth = 5)
 #pprint(Tv.getFullInfo(2078,1).json(),depth = 5)
-#pprint(Tv.getUserSumary().json(),depth =4)
+# pprint(Tv.getUserSumary().json(),depth =4)
