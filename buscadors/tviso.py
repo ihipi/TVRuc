@@ -3,14 +3,13 @@ Created on 14 gen. 2016
 
 @author: albert
 '''
-import requests, time
+import time
 
 #import webview
-import PyQt5, requests
+import requests, getpass
 #Per llegir parameetres de una url
 from urllib.parse import urlparse, parse_qs
 from tools.constants import API_ID, SECRET, TVISOURL
-from pprint import pprint
 from tools import tools
 
 class TViso(object):
@@ -37,6 +36,7 @@ class TViso(object):
         print(self.actualTime , self.auth_expires)
 
         if self.actualTime > self.auth_expires :
+            print('actualitzant tokens...')
             self.getAuthToken()
             self.getUserToken()
         
@@ -54,7 +54,9 @@ class TViso(object):
  #       else:
  #           print('No sha tocat auth_token({})'.format(self.auth_token))   
     def getUserToken(self):
-        urluser = 'https://api.tviso.com/user/user_login?auth_token='+self.auth_token+'&username=albert.giro@gmail.com&password=1234567'
+        usuari = tools.getconfig('usuari') or input('usuari de TViso ')
+        contrasenya = tools.getconfig('password') or getpass()
+        urluser = 'https://api.tviso.com/user/user_login?auth_token={}&username={}&password={}'.format(self.auth_token, usuari, contrasenya)
         response = requests.get(urluser)
         if response.history:
             print("Request was redirected")
@@ -104,12 +106,21 @@ class TViso(object):
         gets={'auth_token':self.auth_token,'user_token':self.user_token}
         return requests.get(TVISOURL+'/user/media/pending/:mediaType?', params = gets)
     def getUserSumary(self):
+
         gets={'auth_token':self.auth_token,'user_token':self.user_token}
-        return requests.get(TVISOURL+'/user/media/collection_summary?', params = gets)    
+        ret= requests.get(TVISOURL+'/user/media/collection_summary?', params = gets).json()
+        print(ret)
+        if  ret['error']>0:
+            if ret['errorMessage'] ==  'User token expired or invalid.':
+                self.getAuthToken()
+                self.getUserToken()
+                return self.getUserSumary()
+        else:
+            return ret
         
 # Tv = TViso()
 #pprint(Tv.searchTitle('fargo').json())      
 #pprint(Tv.getUserCollection().json(),depth = 5)
 #pprint(Tv.getUserMedia().json(),depth = 5)
 #pprint(Tv.getFullInfo(2078,1).json(),depth = 5)
-# pprint(Tv.getUserSumary().json(),depth =4)
+# pprint(Tv.getUserSumary(),depth =4)

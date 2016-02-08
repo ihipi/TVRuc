@@ -3,20 +3,25 @@ Created on 24 gen. 2016
 
 @author: albert
 '''
-import requests, json, os
+import json
+import os
+import requests
 from bs4 import BeautifulSoup
 
-confFile =os.path.abspath('../db/conf')
+confFile =os.path.abspath('./db/conf')
 
 
 def getBS(url):
     res = requests.get(url)
-    return BeautifulSoup(res.text,'html.parser') 
+    return BeautifulSoup(res.text,'html.parser')
+
+
 def getconfig():
     f = open(confFile, mode='r')
     conf = json.load(f)
     return conf   
-    
+
+
 def setconfig(**kargs):
     conf = getconfig()
     print(kargs)

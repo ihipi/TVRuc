@@ -3,14 +3,20 @@ Created on 16 gen. 2016
 
 @author: albert
 '''
-import sqlite3,datetime, time, urllib,json,os, threading, queue, multiprocessing
-from buscadors.infosearch import Info
-from math import floor
+import json
+import multiprocessing
+import os
+import queue
+import sqlite3
+import threading
+import time
 from datetime import datetime
-from tools import tools
+from math import floor
+
+from buscadors.infosearch import Info
 from buscadors.tviso import TViso
-from tools.constants import TVISOURL, IMG
-from pprint import pprint
+from tools import tools
+from tools.constants import IMG
 
 
 class SickRucDB():
@@ -57,8 +63,6 @@ class SickRucDB():
         else:
             print('-'*50,'\nBase de dades actualitzada a dia: {}\n'.format(self.lastUpdate),'-'*50)
 
-
-
     def settime(self):
 #         f = open(self.root+'conf', mode='w')
         last = {'lastUpdate':time.strftime(self.format)}
@@ -70,9 +74,22 @@ class SickRucDB():
     def dbstart(self):
         self.db = sqlite3.connect(self.dbname)
         self.c = self.db.cursor()
+        return self.db.cursor()
 
     def dbstop(self):
         self.db.close()
+
+    def __dbquery(self, query,*args):
+        q = self.dbstart()
+        try:
+            print((query, args))
+            response = [row for row in self.c.execute(query, args[0])]
+        except Exception as e:
+            return False, print(e)
+
+        self.dbstop()
+        return response
+
     def getLastID(self):
 
         self.c.execute('select * from series')
@@ -83,70 +100,82 @@ class SickRucDB():
         print('Last TVMaze id: ',lastId)
         return lastId
 
-        
-        
     def gettime(self):
 
         print(tools.getconfig()['lastUpdate'])
         return tools.getconfig()['lastUpdate']
+
     def wgetImage(self, *args):
-        '''
+        """
         aconsegueix les imatges del "media seleccionat
         @params media_json: json de TVISO amb la informacio del media
-        '''
+        """
         print(args)
 
         while True:
+            # Si el primer argument és un Queue definim @param fil i cua
             if isinstance(args[1],queue.Queue):
                 fil, cua = args
-
+                # aconseguim la serie i el tipus del seguent element de la cua
                 serie, tipus = cua.get()
-            else:
+            else: # si el primer argument no es Queue assignem serie i tipus directament
                 fil, cua= None
                 serie, tipus = args
 
             tviso =  TViso()
-            print('##'*60,'\nFil numero : {}, codi: {} tipus{}\n'.format(fil,serie, tipus),'##'*60)
-            res = tviso.getFullInfo( serie, tipus).json()
+            print('##'*60,'\nFil numero : {},\t codi: {},\t tipus:{}\n'.format(fil,serie, tipus),'##'*60)
+            res = tviso.getFullInfo(serie, tipus).json()
+            try:
+                if isinstance(res['images'], dict):
+                    posterFile = self.root+'imatges/'+serie+"_"+ res['imdb'] +"_poster.jpg"
+                    backdropFile = self.root+'imatges/'+serie+"_"+ res['imdb'] +"_back.jpg"
 
-            if isinstance(res['images'], dict):
-                posterFile = self.root+'imatges/'+res['imdb']+"_poster.jpg"
-                backdropFile = self.root+'imatges/'+res['imdb']+"_back.jpg"
-                posterurl = 'https://img.tviso.com'+'/{}{}{}'.format(res['images']['country'], IMG['fonsL'],res['images']['poster'])
-                backurl = 'https://img.tviso.com'+'/{}{}{}'.format(res['images']['country'], IMG['posterL'],res['images']['backdrop'])
-                print(posterurl, posterFile )
-                print(backurl, backdropFile )
-                #descarreguem la imatge amb un WGET de consola normal i corrent
-                print('descarregant imatges pe la serie {}'.format(serie))
-                os.system("wget -O {0} {1}".format(posterFile, posterurl))
-                os.system("wget -O {0} {1}".format(backdropFile, backurl))
-                cua.task_done()
 
-            else:
+                    if not os.path.exists(posterFile) and not os.path.exists(backdropFile):
+                        backurl = 'https://img.tviso.com'+'/{}{}{}'.format(res['images']['country'] or 'ES', IMG['fonsL'],res['images']['poster'])
+                        posterurl = 'https://img.tviso.com'+'/{}{}{}'.format(res['images']['country'] or 'ES', IMG['posterL'],res['images']['backdrop'])
+                        print(posterurl, posterFile )
+                        print(backurl, backdropFile )
+                        #descarreguem la imatge amb un WGET de consola normal i corrent
+                        print('descarregant imatges pe la serie {}'.format(serie))
+                        os.system("wget -O {0} {1}".format(posterFile, posterurl))
+                        os.system("wget -O {0} {1}".format(backdropFile, backurl))
+                        cua.task_done()
+                    elif not os.path.exists(posterFile):
+                        posterurl = 'https://img.tviso.com'+'/{}{}{}'.format(res['images']['country'], IMG['posterL'],res['images']['poster'])
+                        print(posterurl, posterFile )
+                        print(backurl, backdropFile )
+                        #descarreguem la imatge amb un WGET de consola normal i corrent
+                        print('descarregant imatges pe la serie {}'.format(serie))
+                        os.system("wget -O {0} {1}".format(posterFile, posterurl))
+                        cua.task_done()
+                    if not os.path.exists(backdropFile):
+                        backurl = 'https://img.tviso.com'+'/{}{}{}'.format(res['images']['country'] or 'ES', IMG['fonsL'],res['images']['backdrop'])
+                        print(posterurl, posterFile )
+                        print(backurl, backdropFile )
+                        #descarreguem la imatge amb un WGET de consola normal i corrent
+                        print('descarregant imatges pe la serie {}'.format(serie))
+                        os.system("wget -O {0} {1}".format(backdropFile, backurl))
+                        cua.task_done()
+                    else:
+                        print('La imatge ja esta descarregada')
+                        cua.task_done()
+
+
+                else:
+                    cua.task_done()
+                    print('sense imatge')
+                    return False
+            except Exception as e:
+                print('ERROR: ', e)
                 cua.task_done()
-                print('sense imatge')
-                return False
 
     def addSerie(self, idm, media_type):
         
         tviso =  TViso()
         res = tviso.getFullInfo( idm, media_type).json()
         try:
-            #provem de guardar la foto
-            
-#             if isinstance(res['images'], dict):
-#                 posterFile = self.root+'imatges/'+res['imdb']+"_poster.jpg"
-#                 backdropFile = self.root+'imatges/'+res['imdb']+"_back.jpg"
-#                 posterurl = 'https://img.tviso.com'+'/{}{}{}'.format(res['images']['country'], IMG['fonsL'],res['images']['poster'])
-#                 backurl = 'https://img.tviso.com'+'/{}{}{}'.format(res['images']['country'], IMG['posterL'],res['images']['backdrop'])
-#                 print(posterurl, posterFile )
-#                 print(backurl, backdropFile )
-#                 #descarreguem la imatge amb un WGET de consola normal i corrent
-#                 os.system("wget -O {0} {1}".format(posterFile, posterurl))
-#                 os.system("wget -O {0} {1}".format(backdropFile, backurl))
-#                 
-#             else:
-#                 print('sense imatge')
+
             imageFile = self.root+'imatges/'+res['imdb']+"_poster.jpg"
             values = (int(res['imdb'][2:]),int(res['idm']), int(res['mediaType']), str(res['name']), str(res['status']), imageFile)
             self.c.execute("""insert into mycollection values (?,?,?,?,?,?)""",values)
@@ -178,16 +207,39 @@ class SickRucDB():
                     except Exception as e :    
                         print("epic fail: {}  ".format(e),ordre)
                     self.db.commit()
+
     def updateUserMedia(self):
         tviso = TViso()
-        res = tviso.getUserSumary().json()
+        res = tviso.getUserSumary()
+        image_dict = dict()
+        #busquem totes les imatges que tenim guardades
+        for file in os.listdir(os.path.dirname(__file__)+'/imatges/'):
+            if file[-5:] != ".dict":
+                idm, imdb, tipe = file.split('_')
+                # si no existeix la entrada la creem
+                if not idm in image_dict.keys():
+                    image_dict[idm]= dict()
+                    image_dict[idm]['imdb']=imdb
+                    image_dict[idm][tipe[:-4]]=file
+                # si ja existeix i afegim l'altre tipus de fotografia
+                else:
+                    image_dict[idm]['imdb']=imdb
+                    image_dict[idm][tipe[:-4]]=file
 
-        threads = list()
 
+        img_file =  open(os.path.dirname(__file__)+'/imatges/imatges_dict', mode='w+')
+        json.dump(image_dict,img_file)
+        img_file.close()
+        image_file = open(os.path.dirname(__file__)+'/imatges/imatges_dict', mode='r+')
+        images = json.load(image_file)
         for media in res['collection']['medias'].keys():
-            print('Queuing:',media.split('-')[1],media.split('-')[0])
-            self.get_image_queue.put((media.split('-')[1],media.split('-')[0]))
+            tipus, idm = media.split('-')
+            idms = images.keys()
+            if str(idm) not in idms:
+                print(idm, idms)
 
+                print('Queuing:', idm, tipus)
+                self.get_image_queue.put((idm,tipus))
         self.get_image_queue.join()
 #            self.wgetImage(media.split('-')[1],media.split('-')[0])
         for episodi in res['collection']['episodes'].keys():
@@ -195,10 +247,13 @@ class SickRucDB():
             print(data, episodi)
             self.c.execute("""UPDATE capitols SET date=? WHERE idm=?""", (str(data), int(episodi)))
             self.db.commit()
+
+
+
+
+
         self.settime()
 
-        
-    
     def deleteSerie(self,tvmazeID):
         self.c.execute('SELECT image FROM myseries WHERE tvmazeID=?',(tvmazeID,))
         os.remove(self.c.fetchone()[0])
@@ -207,8 +262,6 @@ class SickRucDB():
         self.c.execute('DELETE FROM capitols WHERE tvmazeID=?',(tvmazeID,))
         self.db.commit()
 
-        
-        
     def updatedb(self):
         i = floor(self.lastId/250)
         print('Pagina:',i)
@@ -268,41 +321,57 @@ class SickRucDB():
                         print('No ha funcionat',row)
                     self.db.commit()
                     
-        for serie in self.getSeriesList('myseries'):
+        for serie in self.getCollectionList('myseries'):
             self.addSerie(int(serie[0]))
         
         self.settime()    
     
-    def getSeriesList(self,table,  filtre=None ):
+    def getCollectionList(self, table, filtre=None, *tipus):
         extra = ' ORDER BY name DESC'
-        ordre = "SELECT name,rating, tvmazeID FROM " + table
-        if isinstance(filtre, str) and filtre is not '':
+        ordre = "SELECT name, media, tviso_id FROM " + table
+        if isinstance(filtre, str) and len(filtre) > 2:
                 ordre = ordre + " WHERE instr(UPPER(name) , UPPER('{}'))>0".format(filtre)
             
 #         ordre += extra
 #         print(filtre)
         print(ordre)
+        # filtrar el tipus de video per a la llista
+        if len(tipus[0]) != 0:
+            # print(tipus[0])
+            ordre += " WHERE media = " + str(tipus[0][0])
+            if len(tipus[0]) > 1:
+                for tip in tipus[0][1:]:
+                    ordre += " OR media = " + str(tip)
+        print(ordre)
         self.c.execute(ordre)
-        return [[str(row[2]),row[0],row[1]] for  row in self.c]
+        return [[str(row[2]),str(row[0]),str(row[1])] for  row in self.c]
     
     def getShowId(self,id):
-        '''
+        """
         Aconsegueix la serie amb la id de tvmaze
-        '''
-        self.c.execute('SELECT * FROM series WHERE tvmazeID=?',(id,))
-        
-        return  [column for column in self.c]
+        """
+        return self.__dbquery('SELECT * FROM mycollection WHERE tvmazeID=?',id)
+
+    def getEpisodes(self,tviso_id):
+        num_temp = self.c.execute('SELECT max(season) FROM capitols WHERE tviso_id=?',(tviso_id,))
+        print('NUMERO DE TEMPORADES: ')
+        episodis = dict()
+        for season in range(num_temp.fetchone()[0]):
+            res = self.c.execute('SELECT * FROM capitols WHERE tviso_id=? AND season = ?' , (tviso_id,season))
+            episodis[season]=[row for row in res]
+        return episodis
 
 
-db =SickRucDB()
+# db =SickRucDB()
+# print(db.dbquery('SELECT * FROM mycollection WHERE tviso_id=?', 69))
 #db.settime()
-# print(db.getShowId(67))
-#db.getSeriesList('myseries')
+# print(db.getEpisodes(67))
+# pprint(db.getCollectionList('mycollection'))
 #db.updatedb()
-#db.c.execute('insert into series values (756,4455,"jhon nieve","imatge")')
+# db.c.execute('insert into series values (756,4455,"jhon nieve","imatge")')
 #db.db.commit()
-#db.addSerie(613,1)
-db.updateUserMedia()
+# db.addSerie(613,1)
+# db.updateUserMedia()
 #db.addSerie(23)
 #db.addSerie(643)
 
